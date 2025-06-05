@@ -17,7 +17,7 @@ AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
 # === LISTAR NOTAS ===
 @app.route("/notes")
 def list_notes():
-    headers = {"Depth": "1"}
+    headers = {"Depth": "infinity"}  # 👈 alterado de "1" para "infinity"
     res = requests.request("PROPFIND", WEBDAV_BASE_URL, headers=headers, auth=AUTH)
 
     if res.status_code != 207:
@@ -27,9 +27,12 @@ def list_notes():
     notas = []
 
     for elem in tree.findall(".//{DAV:}href"):
-        nome = elem.text.split("/")[-1]
+        path = elem.text
+        nome = path.split("/")[-1]
         if nome.endswith(".md"):
-            notas.append(nome)
+            # Mantém o path relativo para identificar corretamente arquivos em subpastas
+            relative_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "")
+            notas.append(relative_path.strip("/"))
 
     return jsonify({"files": notas})
 
