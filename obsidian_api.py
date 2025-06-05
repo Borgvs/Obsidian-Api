@@ -18,8 +18,12 @@ AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
 # === LISTAR NOTAS ===
 @app.route("/notes")
 def list_notes():
+    from urllib.parse import unquote
+    import os
+
     query = request.args.get("q", "").lower()
     folder_filter = request.args.get("folder", "")
+    limit = int(request.args.get("limit", "100"))
 
     headers = {"Depth": "infinity"}
     res = requests.request("PROPFIND", WEBDAV_BASE_URL, headers=headers, auth=AUTH)
@@ -38,7 +42,7 @@ def list_notes():
             continue
 
         rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
-
+        
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
         if query and query not in rel_path.lower():
@@ -50,8 +54,10 @@ def list_notes():
             "folder": os.path.dirname(rel_path)
         })
 
-    return jsonify({"files": notas})
+        if len(notas) >= limit:
+            break
 
+    return jsonify({"files": notas})
 
 # === RETORNAR CONTEÚDO DE UMA NOTA ===
 @app.route("/note/<path:filename>")
