@@ -31,7 +31,7 @@ def get_note(filename):
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.get(file_url, auth=AUTH)
     if res.status_code == 200:
-        return Response(res.content, mimetype="text/markdown")
+        return jsonify({"content": res.text})
     return jsonify({"erro": "Nota não encontrada"}), 404
 
 if __name__ == "__main__":
