@@ -62,6 +62,10 @@ def list_notes():
 # === RETORNAR CONTEÚDO DE UMA NOTA ===
 @app.route("/note/<path:filename>")
 def get_note(filename):
+    # Proteção contra input incorreto vindo com o WebDAV completo
+    if "remote.php/dav/files/" in filename:
+        filename = filename.split("ObsidianVault/Gustavo/", 1)[-1]
+
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.get(file_url, auth=AUTH)
 
