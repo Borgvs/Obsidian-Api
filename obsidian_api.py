@@ -108,7 +108,7 @@ def list_folders():
 def search_notes():
     term = request.args.get("term", "").lower()
     if not term:
-        return jsonify({"error": "Termo de busca não fornecido"}), 400
+        return jsonify({"matches": []})
 
     headers = {"Depth": "infinity"}
     res = requests.request("PROPFIND", WEBDAV_BASE_URL, headers=headers, auth=AUTH)
@@ -118,27 +118,34 @@ def search_notes():
 
     tree = ElementTree.fromstring(res.content)
     matches = []
+    count = 0
+    max_results = 30  # Evita travamento com muitos arquivos
 
     for elem in tree.findall(".//{DAV:}href"):
+        from urllib.parse import unquote
+        import os
+
         path = unquote(elem.text)
-        if not path.endswith(".md"):
-            continue
-        if "Attachments" in path or "Readwise" in path:
+        if not path.endswith(".md") or "Attachments" in path or "Readwise" in path:
             continue
 
         rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
         file_url = WEBDAV_BASE_URL + quote(rel_path)
-
-        file_res = requests.get(file_url, auth=AUTH)
-        if file_res.status_code == 200 and term in file_res.text.lower():
-            matches.append({
-                "name": os.path.basename(rel_path),
-                "path": rel_path,
-                "folder": os.path.dirname(rel_path)
-            })
+        try:
+            file_res = requests.get(file_url, auth=AUTH)
+            if file_res.status_code == 200 and term in file_res.text.lower():
+                matches.append({
+                    "name": os.path.basename(rel_path),
+                    "path": rel_path,
+                    "folder": os.path.dirname(rel_path)
+                })
+                count += 1
+                if count >= max_results:
+                    break
+        except Exception:
+            continue
 
     return jsonify({"matches": matches})
-
 
 # === CRIAR NOTA ===
 @app.route("/note", methods=["POST"])
@@ -147,19 +154,20 @@ def create_or_update_note():
     filename = data.get("filename")
     content = data.get("content", "")
 
-    if not filename or not filename.endswith(".md"):
-        return jsonify({"error": "Nome do arquivo inválido"}), 400
+    if not filename:
+        return jsonify({"error": "O campo 'filename' é obrigatório"}), 400
 
-    full_url = WEBDAV_BASE_URL + quote(filename)
-    headers = {"Content-Type": "text/markdown"}
+    # Corrigir se o filename vier com prefixo WebDAV completo
+    if "remote.php/dav/files" in filename:
+        filename = filename.split("ObsidianVault/Gustavo/", 1)[-1]
 
-    res = requests.put(full_url, data=content.encode("utf-8"), headers=headers, auth=AUTH)
+    file_url = WEBDAV_BASE_URL + quote(filename)
+    res = requests.put(file_url, data=content.encode("utf-8"), auth=AUTH)
 
     if res.status_code in [200, 201, 204]:
-        return jsonify({"message": "Nota criada/atualizada com sucesso"})
+        return jsonify({"message": "Nota salva com sucesso"})
     else:
         return jsonify({"error": f"Erro ao salvar nota: {res.status_code}"}), 500
-
 
 # === INICIAR APLICATIVO ===
 if __name__ == "__main__":
