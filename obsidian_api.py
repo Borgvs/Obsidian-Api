@@ -130,6 +130,28 @@ def search_notes():
     return jsonify({"matches": matches})
 
 
+# === CRIAR NOTA ===
+@app.route("/note", methods=["POST"])
+@require_token
+def create_or_update_note():
+    data = request.get_json()
+    filename = data.get("filename")
+    content = data.get("content", "")
+
+    if not filename or not filename.endswith(".md"):
+        return jsonify({"error": "Nome do arquivo inválido"}), 400
+
+    full_url = WEBDAV_BASE_URL + quote(filename)
+    headers = {"Content-Type": "text/markdown"}
+
+    res = requests.put(full_url, data=content.encode("utf-8"), headers=headers, auth=AUTH)
+
+    if res.status_code in [200, 201, 204]:
+        return jsonify({"message": "Nota criada/atualizada com sucesso"})
+    else:
+        return jsonify({"error": f"Erro ao salvar nota: {res.status_code}"}), 500
+
+
 # === INICIAR APLICATIVO ===
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
