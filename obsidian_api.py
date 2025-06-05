@@ -132,7 +132,6 @@ def search_notes():
 
 # === CRIAR NOTA ===
 @app.route("/note", methods=["POST"])
-@require_token
 def create_or_update_note():
     data = request.get_json()
     filename = data.get("filename")
