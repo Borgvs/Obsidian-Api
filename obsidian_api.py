@@ -1,41 +1,56 @@
-from flask import Flask, jsonify, Response
+from flask import Flask, jsonify, Response, request
+from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
 from urllib.parse import quote
+from xml.etree import ElementTree
 
 app = Flask(__name__)
+CORS(app)  # Libera CORS para o ChatGPT acessar
 
+# === CONFIGURAÇÃO ===
 USERNAME = "gustavo"
 PASSWORD = "Xkntc-ypdG5-3SL5H-NP2GX-4YC9W"
 WEBDAV_BASE_URL = "https://cloud.barch.com.br/remote.php/dav/files/Gustavo/Barch%20Adm/03.Recursos/ObsidianVault/Gustavo/"
-
 AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
 
+
+# === LISTA TODAS AS NOTAS ===
 @app.route("/notes")
 def list_notes():
     headers = {"Depth": "1"}
     res = requests.request("PROPFIND", WEBDAV_BASE_URL, headers=headers, auth=AUTH)
+    
     if res.status_code != 207:
-        return jsonify({"error": "Erro ao acessar o WebDAV"}), 500
-    from xml.etree import ElementTree
+        return jsonify({"error": f"Erro WebDAV ({res.status_code})"}), 500
+
     tree = ElementTree.fromstring(res.content)
     notas = []
+    
     for elem in tree.findall(".//{DAV:}href"):
         nome = elem.text.split("/")[-1]
         if nome.endswith(".md"):
             notas.append(nome)
-    return jsonify(notas)
 
-@app.route("/note/<filename>")
+    return jsonify({"files": notas})
+
+
+# === PEGA UMA NOTA ESPECÍFICA ===
+@app.route("/note/<path:filename>")
 def get_note(filename):
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.get(file_url, auth=AUTH)
+
     if res.status_code == 200:
         return jsonify({"content": res.text})
-    return jsonify({"erro": "Nota não encontrada"}), 404
+    elif res.status_code == 404:
+        return jsonify({"error": "Nota não encontrada"}), 404
+    else:
+        return jsonify({"error": f"Erro ao acessar nota ({res.status_code})"}), 500
 
+
+# === INICIALIZA O SERVIDOR ===
 if __name__ == "__main__":
-    import os
-port = int(os.environ.get("PORT", 5000))
-app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000)
+
 
