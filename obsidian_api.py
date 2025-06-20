@@ -10,9 +10,14 @@ app = Flask(__name__)
 CORS(app)
 
 # === CONFIGURAÇÕES ===
-USERNAME = "gustavo"
-PASSWORD = "Xkntc-ypdG5-3SL5H-NP2GX-4YC9W"
-WEBDAV_BASE_URL = "https://cloud.barch.com.br/remote.php/dav/files/Gustavo/Barch%20Adm/03.Recursos/ObsidianVault/Gustavo/"
+# These values can be configured via environment variables. The defaults
+# reflect the development configuration used for tests.
+USERNAME = os.environ.get("USERNAME", "gustavo")
+PASSWORD = os.environ.get("PASSWORD", "Xkntc-ypdG5-3SL5H-NP2GX-4YC9W")
+WEBDAV_BASE_URL = os.environ.get(
+    "WEBDAV_BASE_URL",
+    "https://cloud.barch.com.br/remote.php/dav/files/Gustavo/Barch%20Adm/03.Recursos/ObsidianVault/Gustavo/",
+)
 AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
 
 
@@ -57,7 +62,8 @@ def list_notes():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
+        base_path = unquote(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""))
+        rel_path = path.replace(base_path, "").strip("/")
 
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
@@ -113,6 +119,7 @@ def list_folders():
             continue
 
         rel_path = to_relative_path(elem.text)
+
         folder = os.path.dirname(rel_path)
         folders.add(folder)
 
@@ -143,6 +150,7 @@ def search_notes():
             continue
 
         rel_path = to_relative_path(elem.text)
+
         file_url = WEBDAV_BASE_URL + quote(rel_path)
         try:
             file_res = requests.get(file_url, auth=AUTH)
