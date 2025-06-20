@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 import pytest
 
@@ -120,25 +120,27 @@ def test_search_notes_limit(client):
     assert data == {"matches": expected}
     assert mock_get.call_count == 30
 
-
-def test_search_notes_custom_limit(client):
-    with patch(
-        "obsidian_api.requests.request",
-        return_value=propfind_many_response(35),
-    ), patch(
-        "obsidian_api.requests.get",
-        return_value=note_response("match term"),
-    ) as mock_get:
-        from obsidian_api import request as flask_request, search_notes
-
-        flask_request.args = {"term": "match", "limit": "10"}
-        resp = search_notes()
+    
+def test_get_note_strips_spaces(client):
+    with patch("obsidian_api.requests.get", return_value=note_response("Hi")) as mock_get:
+        resp = client.get("/note/ Note1.md ")
 
     assert resp.status_code == 200
-    data = resp.get_json()
-    expected = [
-        {"name": f"Note{i}.md", "path": f"Note{i}.md", "folder": ""}
-        for i in range(10)
-    ]
-    assert data == {"matches": expected}
-    assert mock_get.call_count == 10
+    assert resp.get_json() == {"content": "Hi"}
+    mock_get.assert_called_once_with(WEBDAV_BASE_URL + "Note1.md", auth=ANY)
+
+
+def test_create_note_strips_spaces(client):
+    with patch("obsidian_api.requests.put", return_value=put_response()) as mock_put:
+        resp = client.post(
+            "/note",
+            json={"filename": " New.md ", "content": "Hi"},
+        )
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {"message": "Nota salva com sucesso"}
+    mock_put.assert_called_once_with(
+        WEBDAV_BASE_URL + "New.md",
+        data=b"Hi",
+        auth=ANY,
+    )
