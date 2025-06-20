@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlparse
 from xml.etree import ElementTree
 
 app = Flask(__name__)
@@ -32,6 +32,7 @@ WEBDAV_BASE_URL = os.environ.get(
     "https://cloud.barch.com.br/remote.php/dav/files/Gustavo/Barch%20Adm/03.Recursos/ObsidianVault/Gustavo/",
 )
 AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
+BASE_PATH = unquote(urlparse(WEBDAV_BASE_URL).path)
 
 
 def to_relative_path(raw_path: str) -> str:

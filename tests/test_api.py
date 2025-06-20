@@ -3,9 +3,7 @@ from unittest.mock import patch, ANY
 
 import pytest
 
-from obsidian_api import app, WEBDAV_BASE_URL, AUTH
-
-BASE_PATH = WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
+from obsidian_api import app, BASE_PATH
 
 class DummyResponse:
     def __init__(self, status_code=200, text="", content=b""):
