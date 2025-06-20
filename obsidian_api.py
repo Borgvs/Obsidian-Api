@@ -25,7 +25,9 @@ def to_relative_path(raw_path: str) -> str:
     """Converte o caminho WebDAV completo em um caminho relativo ao cofre."""
     path = unquote(raw_path)
 
-    # Caminho base com e sem o domínio
+    # As URLs podem conter espaços codificados (%20). Para comparar corretamente
+    # com o caminho já decodificado acima, também decodificamos os valores de base
+
     base_with_domain = unquote(WEBDAV_BASE_URL)
     base_without_domain = unquote(
         WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
