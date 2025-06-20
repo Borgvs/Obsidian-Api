@@ -5,3 +5,11 @@ Nenhuma informação é armazenada ou transmitida para terceiros.
 O conteúdo acessado vem do seu Nextcloud por meio de WebDAV seguro.
 Nenhum dado pessoal é processado ou salvo fora da sessão atual.
 Você pode desconectar ou excluir a API a qualquer momento para encerrar o acesso.
+
+## Running tests
+
+Install the requirements and run `pytest` from the repository root:
+
+```bash
+pytest
+```
