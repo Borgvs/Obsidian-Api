@@ -33,10 +33,15 @@ def to_relative_path(raw_path: str) -> str:
         WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
     )
 
-    if path.startswith(base_with_domain):
-        path = path[len(base_with_domain):]
-    elif path.startswith(base_without_domain):
-        path = path[len(base_without_domain):]
+    # Comparações devem ocorrer em valores decodificados para abranger ambos os
+    # formatos retornados pelo WebDAV
+    base_with_domain_unquoted = unquote(base_with_domain)
+    base_without_domain_unquoted = unquote(base_without_domain)
+
+    if path.startswith(base_with_domain_unquoted):
+        path = path[len(base_with_domain_unquoted):]
+    elif path.startswith(base_without_domain_unquoted):
+        path = path[len(base_without_domain_unquoted):]
 
     return path.strip("/")
 
