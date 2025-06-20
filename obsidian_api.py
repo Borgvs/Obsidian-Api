@@ -72,7 +72,10 @@ def list_notes():
     if res.status_code != 207:
         return jsonify({"error": f"Erro WebDAV: {res.status_code}"}), 500
 
-    tree = ElementTree.fromstring(res.content)
+    try:
+        tree = ElementTree.fromstring(res.content)
+    except ElementTree.ParseError:
+        return jsonify({"error": "Resposta WebDAV malformada"}), 500
     notas = []
 
     for elem in tree.findall(".//{DAV:}href"):
@@ -130,7 +133,10 @@ def list_folders():
     if res.status_code != 207:
         return jsonify({"error": f"Erro WebDAV: {res.status_code}"}), 500
 
-    tree = ElementTree.fromstring(res.content)
+    try:
+        tree = ElementTree.fromstring(res.content)
+    except ElementTree.ParseError:
+        return jsonify({"error": "Resposta WebDAV malformada"}), 500
     folders = set()
 
     for elem in tree.findall(".//{DAV:}href"):
@@ -161,7 +167,10 @@ def search_notes():
     if res.status_code != 207:
         return jsonify({"error": f"Erro WebDAV: {res.status_code}"}), 500
 
-    tree = ElementTree.fromstring(res.content)
+    try:
+        tree = ElementTree.fromstring(res.content)
+    except ElementTree.ParseError:
+        return jsonify({"error": "Resposta WebDAV malformada"}), 500
     matches = []
     max_results = int(request.args.get("limit", "30"))  # Evita travamento com muitos arquivos
 

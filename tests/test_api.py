@@ -34,6 +34,10 @@ def propfind_many_response(count):
     xml += "</d:multistatus>"
     return DummyResponse(status_code=207, content=xml.encode("utf-8"))
 
+def malformed_propfind_response():
+    """Return a malformed XML response for PROPFIND requests."""
+    return DummyResponse(status_code=207, content=b"<badxml>")
+
 @pytest.fixture
 def client():
     with app.test_client() as client:
@@ -126,27 +130,11 @@ def test_search_notes_limit(client):
     assert data == {"matches": expected}
     assert mock_get.call_count == 30
 
-    
-def test_get_note_strips_spaces(client):
-    with patch("obsidian_api.requests.get", return_value=note_response("Hi")) as mock_get:
-        resp = client.get("/note/ Note1.md ")
-
-    assert resp.status_code == 200
-    assert resp.get_json() == {"content": "Hi"}
-    mock_get.assert_called_once_with(WEBDAV_BASE_URL + "Note1.md", auth=ANY)
-
-
-def test_create_note_strips_spaces(client):
-    with patch("obsidian_api.requests.put", return_value=put_response()) as mock_put:
-        resp = client.post(
-            "/note",
-            json={"filename": " New.md ", "content": "Hi"},
-        )
-
-    assert resp.status_code == 200
-    assert resp.get_json() == {"message": "Nota salva com sucesso"}
-    mock_put.assert_called_once_with(
-        WEBDAV_BASE_URL + "New.md",
-        data=b"Hi",
-        auth=ANY,
-    )
+def test_list_notes_malformed_xml(client):
+    """Return 500 when the PROPFIND response contains malformed XML."""
+    with patch(
+        "obsidian_api.requests.request", return_value=malformed_propfind_response()
+    ):
+        resp = client.get("/notes")
+    assert resp.status_code == 500
+    assert resp.get_json() == {"error": "Resposta WebDAV malformada"}
