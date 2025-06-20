@@ -73,3 +73,9 @@ class Flask:
                 return result
         return Client()
 
+    # The real Flask class exposes a ``run`` method used to start the
+    # development server.  Our tests and example application only need the
+    # method to exist, so provide a no-op implementation.
+    def run(self, *args, **kwargs):
+        pass
+
