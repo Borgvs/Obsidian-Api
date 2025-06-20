@@ -34,6 +34,10 @@ def propfind_many_response(count):
     xml += "</d:multistatus>"
     return DummyResponse(status_code=207, content=xml.encode("utf-8"))
 
+def malformed_propfind_response():
+    """Return a malformed XML response for PROPFIND requests."""
+    return DummyResponse(status_code=207, content=b"<badxml>")
+
 @pytest.fixture
 def client():
     with app.test_client() as client:
@@ -113,3 +117,13 @@ def test_search_notes_limit(client):
     ]
     assert data == {"matches": expected}
     assert mock_get.call_count == 30
+
+
+def test_list_notes_malformed_xml(client):
+    """Return 500 when the PROPFIND response contains malformed XML."""
+    with patch(
+        "obsidian_api.requests.request", return_value=malformed_propfind_response()
+    ):
+        resp = client.get("/notes")
+    assert resp.status_code == 500
+    assert resp.get_json() == {"error": "Resposta WebDAV malformada"}
