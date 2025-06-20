@@ -1,4 +1,5 @@
 flask
-requests
 flask_cors
+requests
 pytest
+gunicorn
