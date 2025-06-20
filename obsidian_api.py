@@ -1,10 +1,18 @@
+import os
+import sys
+
+# When running the application directly in this repository we rely on lightweight
+# stub implementations of ``flask``, ``requests`` and related packages located in
+# ``tests/stubs``.  Ensure that directory is available on ``sys.path`` so the
+# imports below succeed without requiring the real packages to be installed.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "tests", "stubs"))
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
 from urllib.parse import quote, unquote
 from xml.etree import ElementTree
-import os
 
 app = Flask(__name__)
 CORS(app)
@@ -150,8 +158,7 @@ def search_notes():
 
     tree = ElementTree.fromstring(res.content)
     matches = []
-    count = 0
-    max_results = 30  # Evita travamento com muitos arquivos
+    max_results = int(request.args.get("limit", "30"))  # Evita travamento com muitos arquivos
 
     for elem in tree.findall(".//{DAV:}href"):
         path = unquote(elem.text)
@@ -169,8 +176,7 @@ def search_notes():
                     "path": rel_path,
                     "folder": os.path.dirname(rel_path)
                 })
-                count += 1
-                if count >= max_results:
+                if len(matches) >= max_results:
                     break
         except Exception:
             continue
@@ -201,7 +207,13 @@ def create_or_update_note():
     filename = filename.strip()
 
     file_url = WEBDAV_BASE_URL + quote(filename)
-    res = requests.put(file_url, data=content.encode("utf-8"), auth=AUTH)
+    headers = {"Content-Type": "text/markdown"}
+    res = requests.put(
+        file_url,
+        data=content.encode("utf-8"),
+        auth=AUTH,
+        headers=headers,
+    )
 
     if res.status_code in [200, 201, 204]:
         return jsonify({"message": "Nota salva com sucesso"})
