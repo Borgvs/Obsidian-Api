@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlparse
 from xml.etree import ElementTree
 import os
 
@@ -14,6 +14,7 @@ USERNAME = "gustavo"
 PASSWORD = "Xkntc-ypdG5-3SL5H-NP2GX-4YC9W"
 WEBDAV_BASE_URL = "https://cloud.barch.com.br/remote.php/dav/files/Gustavo/Barch%20Adm/03.Recursos/ObsidianVault/Gustavo/"
 AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
+BASE_PATH = unquote(urlparse(WEBDAV_BASE_URL).path)
 
 # === LISTAR NOTAS ===
 @app.route("/notes")
@@ -41,7 +42,7 @@ def list_notes():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
+        rel_path = path.replace(BASE_PATH, "", 1).strip("/")
 
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
@@ -96,7 +97,7 @@ def list_folders():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
+        rel_path = path.replace(BASE_PATH, "", 1).strip("/")
         folder = os.path.dirname(rel_path)
         folders.add(folder)
 
@@ -129,7 +130,7 @@ def search_notes():
         if not path.endswith(".md") or "Attachments" in path or "Readwise" in path:
             continue
 
-        rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
+        rel_path = path.replace(BASE_PATH, "", 1).strip("/")
         file_url = WEBDAV_BASE_URL + quote(rel_path)
         try:
             file_res = requests.get(file_url, auth=AUTH)
