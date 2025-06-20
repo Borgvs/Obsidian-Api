@@ -94,6 +94,9 @@ def get_note(filename):
     if "remote.php/dav/files/" in filename:
         filename = to_relative_path(filename)
 
+    # Remove espaços extras que podem vir no nome do arquivo
+    filename = filename.strip()
+
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.get(file_url, auth=AUTH)
 
@@ -193,6 +196,9 @@ def create_or_update_note():
     # Corrigir se o filename vier com prefixo WebDAV completo
     if "remote.php/dav/files" in filename:
         filename = to_relative_path(filename)
+
+    # Remove espaços extras enviados no JSON
+    filename = filename.strip()
 
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.put(file_url, data=content.encode("utf-8"), auth=AUTH)
