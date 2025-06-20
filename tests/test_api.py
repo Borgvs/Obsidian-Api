@@ -27,6 +27,13 @@ def note_response(content="Content"):
 def put_response():
     return DummyResponse(status_code=201)
 
+def propfind_many_response(count):
+    xml = "<?xml version='1.0'?><d:multistatus xmlns:d='DAV:'>"
+    for i in range(count):
+        xml += f"<d:response><d:href>{BASE_PATH}Note{i}.md</d:href></d:response>"
+    xml += "</d:multistatus>"
+    return DummyResponse(status_code=207, content=xml.encode("utf-8"))
+
 @pytest.fixture
 def client():
     with app.test_client() as client:
@@ -82,3 +89,27 @@ def test_create_note_missing_filename(client):
     mock_put.assert_not_called()
     assert resp.status_code == 400
     assert resp.get_json() == {"error": "O campo 'filename' é obrigatório"}
+
+
+def test_search_notes_limit(client):
+    with patch(
+        "obsidian_api.requests.request",
+        return_value=propfind_many_response(35),
+    ), patch(
+        "obsidian_api.requests.get",
+        return_value=note_response("match term"),
+    ) as mock_get:
+        # Call the view directly with query args to avoid client routing limits
+        from obsidian_api import request as flask_request, search_notes
+
+        flask_request.args = {"term": "match"}
+        resp = search_notes()
+
+    assert resp.status_code == 200
+    data = resp.get_json()
+    expected = [
+        {"name": f"Note{i}.md", "path": f"Note{i}.md", "folder": ""}
+        for i in range(30)
+    ]
+    assert data == {"matches": expected}
+    assert mock_get.call_count == 30
