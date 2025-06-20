@@ -42,7 +42,7 @@ def list_notes():
             continue
 
         rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
-        
+
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
         if query and query not in rel_path.lower():
