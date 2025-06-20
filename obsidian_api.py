@@ -39,8 +39,6 @@ def to_relative_path(raw_path: str) -> str:
 # === LISTAR NOTAS ===
 @app.route("/notes")
 def list_notes():
-    from urllib.parse import unquote
-    import os
 
     query = request.args.get("q", "").lower()
     folder_filter = request.args.get("folder", "")
