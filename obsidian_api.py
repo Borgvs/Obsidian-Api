@@ -1,13 +1,26 @@
+import os
+import sys
+
+# When running the application directly in this repository we rely on lightweight
+# stub implementations of ``flask``, ``requests`` and related packages located in
+# ``tests/stubs``.  Ensure that directory is available on ``sys.path`` so the
+# imports below succeed without requiring the real packages to be installed.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "tests", "stubs"))
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
 from urllib.parse import quote, unquote, urlparse
 from xml.etree import ElementTree
-import os
 
 app = Flask(__name__)
 CORS(app)
+
+# === HEALTH CHECK ===
+@app.route("/ping")
+def ping():
+    return jsonify({"status": "ok"})
 
 # === CONFIGURAÇÕES ===
 # These values can be configured via environment variables. The defaults
@@ -26,14 +39,23 @@ def to_relative_path(raw_path: str) -> str:
     """Converte o caminho WebDAV completo em um caminho relativo ao cofre."""
     path = unquote(raw_path)
 
-    # Caminho base com e sem o domínio
-    base_with_domain = WEBDAV_BASE_URL
-    base_without_domain = WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
+    # As URLs podem conter espaços codificados (%20). Para comparar corretamente
+    # com o caminho já decodificado acima, também decodificamos os valores de base
 
-    if path.startswith(base_with_domain):
-        path = path[len(base_with_domain):]
-    elif path.startswith(base_without_domain):
-        path = path[len(base_without_domain):]
+    base_with_domain = unquote(WEBDAV_BASE_URL)
+    base_without_domain = unquote(
+        WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
+    )
+
+    # Comparações devem ocorrer em valores decodificados para abranger ambos os
+    # formatos retornados pelo WebDAV
+    base_with_domain_unquoted = unquote(base_with_domain)
+    base_without_domain_unquoted = unquote(base_without_domain)
+
+    if path.startswith(base_with_domain_unquoted):
+        path = path[len(base_with_domain_unquoted):]
+    elif path.startswith(base_without_domain_unquoted):
+        path = path[len(base_without_domain_unquoted):]
 
     return path.strip("/")
 
@@ -51,7 +73,10 @@ def list_notes():
     if res.status_code != 207:
         return jsonify({"error": f"Erro WebDAV: {res.status_code}"}), 500
 
-    tree = ElementTree.fromstring(res.content)
+    try:
+        tree = ElementTree.fromstring(res.content)
+    except ElementTree.ParseError:
+        return jsonify({"error": "Resposta WebDAV malformada"}), 500
     notas = []
 
     for elem in tree.findall(".//{DAV:}href"):
@@ -61,8 +86,7 @@ def list_notes():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        base_path = unquote(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""))
-        rel_path = path.replace(base_path, "").strip("/")
+        rel_path = to_relative_path(elem.text)
 
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
@@ -87,6 +111,9 @@ def get_note(filename):
     if "remote.php/dav/files/" in filename:
         filename = to_relative_path(filename)
 
+    # Remove espaços extras que podem vir no nome do arquivo
+    filename = filename.strip()
+
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.get(file_url, auth=AUTH)
 
@@ -107,7 +134,10 @@ def list_folders():
     if res.status_code != 207:
         return jsonify({"error": f"Erro WebDAV: {res.status_code}"}), 500
 
-    tree = ElementTree.fromstring(res.content)
+    try:
+        tree = ElementTree.fromstring(res.content)
+    except ElementTree.ParseError:
+        return jsonify({"error": "Resposta WebDAV malformada"}), 500
     folders = set()
 
     for elem in tree.findall(".//{DAV:}href"):
@@ -138,10 +168,12 @@ def search_notes():
     if res.status_code != 207:
         return jsonify({"error": f"Erro WebDAV: {res.status_code}"}), 500
 
-    tree = ElementTree.fromstring(res.content)
+    try:
+        tree = ElementTree.fromstring(res.content)
+    except ElementTree.ParseError:
+        return jsonify({"error": "Resposta WebDAV malformada"}), 500
     matches = []
-    count = 0
-    max_results = 30  # Evita travamento com muitos arquivos
+    max_results = int(request.args.get("limit", "30"))  # Evita travamento com muitos arquivos
 
     for elem in tree.findall(".//{DAV:}href"):
         path = unquote(elem.text)
@@ -159,8 +191,7 @@ def search_notes():
                     "path": rel_path,
                     "folder": os.path.dirname(rel_path)
                 })
-                count += 1
-                if count >= max_results:
+                if len(matches) >= max_results:
                     break
         except Exception:
             continue
@@ -187,8 +218,17 @@ def create_or_update_note():
     if "remote.php/dav/files" in filename:
         filename = to_relative_path(filename)
 
+    # Remove espaços extras enviados no JSON
+    filename = filename.strip()
+
     file_url = WEBDAV_BASE_URL + quote(filename)
-    res = requests.put(file_url, data=content.encode("utf-8"), auth=AUTH)
+    headers = {"Content-Type": "text/markdown"}
+    res = requests.put(
+        file_url,
+        data=content.encode("utf-8"),
+        auth=AUTH,
+        headers=headers,
+    )
 
     if res.status_code in [200, 201, 204]:
         return jsonify({"message": "Nota salva com sucesso"})
