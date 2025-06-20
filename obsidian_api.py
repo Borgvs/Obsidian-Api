@@ -17,6 +17,11 @@ from xml.etree import ElementTree
 app = Flask(__name__)
 CORS(app)
 
+# === HEALTH CHECK ===
+@app.route("/ping")
+def ping():
+    return jsonify({"status": "ok"})
+
 # === CONFIGURAÇÕES ===
 # These values can be configured via environment variables. The defaults
 # reflect the development configuration used for tests.

@@ -39,6 +39,12 @@ def client():
     with app.test_client() as client:
         yield client
 
+
+def test_ping(client):
+    resp = client.get("/ping")
+    assert resp.status_code == 200
+    assert resp.get_json() == {"status": "ok"}
+
 def test_list_notes(client):
     with patch("obsidian_api.requests.request", return_value=propfind_response()):
         resp = client.get("/notes")
