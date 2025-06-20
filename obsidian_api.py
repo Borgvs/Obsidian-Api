@@ -18,8 +18,6 @@ AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
 # === LISTAR NOTAS ===
 @app.route("/notes")
 def list_notes():
-    from urllib.parse import unquote
-    import os
 
     query = request.args.get("q", "").lower()
     folder_filter = request.args.get("folder", "")
@@ -122,9 +120,6 @@ def search_notes():
     max_results = 30  # Evita travamento com muitos arquivos
 
     for elem in tree.findall(".//{DAV:}href"):
-        from urllib.parse import unquote
-        import os
-
         path = unquote(elem.text)
         if not path.endswith(".md") or "Attachments" in path or "Readwise" in path:
             continue
