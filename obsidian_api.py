@@ -20,6 +20,22 @@ WEBDAV_BASE_URL = os.environ.get(
 )
 AUTH = HTTPBasicAuth(USERNAME, PASSWORD)
 
+
+def to_relative_path(raw_path: str) -> str:
+    """Converte o caminho WebDAV completo em um caminho relativo ao cofre."""
+    path = unquote(raw_path)
+
+    # Caminho base com e sem o domínio
+    base_with_domain = WEBDAV_BASE_URL
+    base_without_domain = WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
+
+    if path.startswith(base_with_domain):
+        path = path[len(base_with_domain):]
+    elif path.startswith(base_without_domain):
+        path = path[len(base_without_domain):]
+
+    return path.strip("/")
+
 # === LISTAR NOTAS ===
 @app.route("/notes")
 def list_notes():
@@ -70,7 +86,7 @@ def list_notes():
 def get_note(filename):
     # Proteção contra input incorreto vindo com o WebDAV completo
     if "remote.php/dav/files/" in filename:
-        filename = filename.split("ObsidianVault/Gustavo/", 1)[-1]
+        filename = to_relative_path(filename)
 
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.get(file_url, auth=AUTH)
@@ -102,8 +118,8 @@ def list_folders():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        base_path = unquote(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""))
-        rel_path = path.replace(base_path, "").strip("/")
+        rel_path = to_relative_path(elem.text)
+
         folder = os.path.dirname(rel_path)
         folders.add(folder)
 
@@ -129,15 +145,12 @@ def search_notes():
     max_results = 30  # Evita travamento com muitos arquivos
 
     for elem in tree.findall(".//{DAV:}href"):
-        from urllib.parse import unquote
-        import os
-
         path = unquote(elem.text)
         if not path.endswith(".md") or "Attachments" in path or "Readwise" in path:
             continue
 
-        base_path = unquote(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""))
-        rel_path = path.replace(base_path, "").strip("/")
+        rel_path = to_relative_path(elem.text)
+
         file_url = WEBDAV_BASE_URL + quote(rel_path)
         try:
             file_res = requests.get(file_url, auth=AUTH)
@@ -173,7 +186,7 @@ def create_or_update_note():
 
     # Corrigir se o filename vier com prefixo WebDAV completo
     if "remote.php/dav/files" in filename:
-        filename = filename.split("ObsidianVault/Gustavo/", 1)[-1]
+        filename = to_relative_path(filename)
 
     file_url = WEBDAV_BASE_URL + quote(filename)
     res = requests.put(file_url, data=content.encode("utf-8"), auth=AUTH)
