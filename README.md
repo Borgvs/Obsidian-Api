@@ -8,7 +8,7 @@ Você pode desconectar ou excluir a API a qualquer momento para encerrar o acess
 
 ## Running tests
 
-Install the requirements and run `pytest` from the repository root:
+Install the requirements from `requirements.txt` and run `pytest` from the repository root:
 
 ```bash
 pytest
