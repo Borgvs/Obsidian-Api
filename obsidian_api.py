@@ -26,8 +26,10 @@ def to_relative_path(raw_path: str) -> str:
     path = unquote(raw_path)
 
     # Caminho base com e sem o domínio
-    base_with_domain = WEBDAV_BASE_URL
-    base_without_domain = WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
+    base_with_domain = unquote(WEBDAV_BASE_URL)
+    base_without_domain = unquote(
+        WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
+    )
 
     if path.startswith(base_with_domain):
         path = path[len(base_with_domain):]
@@ -60,8 +62,7 @@ def list_notes():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        base_path = unquote(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""))
-        rel_path = path.replace(base_path, "").strip("/")
+        rel_path = to_relative_path(elem.text)
 
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
