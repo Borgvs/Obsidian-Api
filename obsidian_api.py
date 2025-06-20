@@ -57,8 +57,8 @@ def list_notes():
         if "Attachments" in path or "Readwise" in path:
             continue
 
-        rel_path = to_relative_path(elem.text)
-        
+        rel_path = path.replace(WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", ""), "").strip("/")
+
         if folder_filter and not rel_path.startswith(folder_filter):
             continue
         if query and query not in rel_path.lower():
@@ -160,10 +160,16 @@ def search_notes():
 
     return jsonify({"matches": matches})
 
-# === CRIAR NOTA ===
+# === CRIAR OU ATUALIZAR NOTA ===
 @app.route("/note", methods=["POST"])
 def create_or_update_note():
+    if not request.is_json:
+        return jsonify({"error": "Corpo da requisi\u00e7\u00e3o deve ser JSON"}), 400
+
     data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "JSON inv\u00e1lido"}), 400
+
     filename = data.get("filename")
     content = data.get("content", "")
 
