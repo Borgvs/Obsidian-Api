@@ -147,8 +147,7 @@ def search_notes():
 
     tree = ElementTree.fromstring(res.content)
     matches = []
-    count = 0
-    max_results = 30  # Evita travamento com muitos arquivos
+    max_results = int(request.args.get("limit", "30"))  # Evita travamento com muitos arquivos
 
     for elem in tree.findall(".//{DAV:}href"):
         path = unquote(elem.text)
@@ -166,8 +165,7 @@ def search_notes():
                     "path": rel_path,
                     "folder": os.path.dirname(rel_path)
                 })
-                count += 1
-                if count >= max_results:
+                if len(matches) >= max_results:
                     break
         except Exception:
             continue

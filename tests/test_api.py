@@ -113,3 +113,26 @@ def test_search_notes_limit(client):
     ]
     assert data == {"matches": expected}
     assert mock_get.call_count == 30
+
+
+def test_search_notes_custom_limit(client):
+    with patch(
+        "obsidian_api.requests.request",
+        return_value=propfind_many_response(35),
+    ), patch(
+        "obsidian_api.requests.get",
+        return_value=note_response("match term"),
+    ) as mock_get:
+        from obsidian_api import request as flask_request, search_notes
+
+        flask_request.args = {"term": "match", "limit": "10"}
+        resp = search_notes()
+
+    assert resp.status_code == 200
+    data = resp.get_json()
+    expected = [
+        {"name": f"Note{i}.md", "path": f"Note{i}.md", "folder": ""}
+        for i in range(10)
+    ]
+    assert data == {"matches": expected}
+    assert mock_get.call_count == 10
