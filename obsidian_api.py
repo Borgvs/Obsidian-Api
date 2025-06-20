@@ -147,7 +147,7 @@ def search_notes():
 
     return jsonify({"matches": matches})
 
-# === CRIAR NOTA ===
+# === CRIAR OU ATUALIZAR NOTA ===
 @app.route("/note", methods=["POST"])
 def create_or_update_note():
     data = request.get_json()
