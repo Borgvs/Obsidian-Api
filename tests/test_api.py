@@ -65,3 +65,20 @@ def test_create_note(client):
         )
     assert resp.status_code == 200
     assert resp.get_json() == {"message": "Nota salva com sucesso"}
+
+
+def test_get_note_not_found(client):
+    """Return 404 when the note does not exist."""
+    with patch("obsidian_api.requests.get", return_value=DummyResponse(status_code=404)):
+        resp = client.get("/note/Missing.md")
+    assert resp.status_code == 404
+    assert resp.get_json() == {"error": "Nota não encontrada"}
+
+
+def test_create_note_missing_filename(client):
+    """Validate error when filename field is absent."""
+    with patch("obsidian_api.requests.put") as mock_put:
+        resp = client.post("/note", json={"content": "Hi"})
+    mock_put.assert_not_called()
+    assert resp.status_code == 400
+    assert resp.get_json() == {"error": "O campo 'filename' é obrigatório"}
