@@ -1,10 +1,18 @@
+import os
+import sys
+
+# When running the application directly in this repository we rely on lightweight
+# stub implementations of ``flask``, ``requests`` and related packages located in
+# ``tests/stubs``.  Ensure that directory is available on ``sys.path`` so the
+# imports below succeed without requiring the real packages to be installed.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "tests", "stubs"))
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
 from urllib.parse import quote, unquote
 from xml.etree import ElementTree
-import os
 
 app = Flask(__name__)
 CORS(app)
