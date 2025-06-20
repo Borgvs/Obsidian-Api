@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from obsidian_api import app, WEBDAV_BASE_URL
+from obsidian_api import app, WEBDAV_BASE_URL, AUTH
 
 BASE_PATH = WEBDAV_BASE_URL.replace("https://cloud.barch.com.br", "")
 
@@ -65,13 +65,19 @@ def test_get_note(client):
     assert resp.get_json() == {"content": "Hello"}
 
 def test_create_note(client):
-    with patch("obsidian_api.requests.put", return_value=put_response()):
+    with patch("obsidian_api.requests.put", return_value=put_response()) as mock_put:
         resp = client.post(
             "/note",
             json={"filename": "New.md", "content": "Hi"},
         )
     assert resp.status_code == 200
     assert resp.get_json() == {"message": "Nota salva com sucesso"}
+    mock_put.assert_called_once_with(
+        WEBDAV_BASE_URL + "New.md",
+        data=b"Hi",
+        auth=AUTH,
+        headers={"Content-Type": "text/markdown"},
+    )
 
 
 def test_get_note_not_found(client):

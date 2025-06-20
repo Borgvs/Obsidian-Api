@@ -201,7 +201,13 @@ def create_or_update_note():
         filename = to_relative_path(filename)
 
     file_url = WEBDAV_BASE_URL + quote(filename)
-    res = requests.put(file_url, data=content.encode("utf-8"), auth=AUTH)
+    headers = {"Content-Type": "text/markdown"}
+    res = requests.put(
+        file_url,
+        data=content.encode("utf-8"),
+        auth=AUTH,
+        headers=headers,
+    )
 
     if res.status_code in [200, 201, 204]:
         return jsonify({"message": "Nota salva com sucesso"})
