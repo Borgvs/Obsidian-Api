@@ -3,7 +3,7 @@ from unittest.mock import patch, ANY
 
 import pytest
 
-from obsidian_api import app, BASE_PATH
+from app import app, BASE_PATH, WEBDAV_BASE_URL, AUTH
 
 class DummyResponse:
     def __init__(self, status_code=200, text="", content=b""):
@@ -48,7 +48,7 @@ def test_ping(client):
     assert resp.get_json() == {"status": "ok"}
 
 def test_list_notes(client):
-    with patch("obsidian_api.requests.request", return_value=propfind_response()):
+    with patch("app.requests.request", return_value=propfind_response()):
         resp = client.get("/notes")
     assert resp.status_code == 200
     data = resp.get_json()
@@ -60,20 +60,20 @@ def test_list_notes(client):
     }
 
 def test_list_folders(client):
-    with patch("obsidian_api.requests.request", return_value=propfind_response()):
+    with patch("app.requests.request", return_value=propfind_response()):
         resp = client.get("/folders")
     assert resp.status_code == 200
     data = resp.get_json()
     assert data == {"folders": ["", "folder"]}
 
 def test_get_note(client):
-    with patch("obsidian_api.requests.get", return_value=note_response("Hello")):
+    with patch("app.requests.get", return_value=note_response("Hello")):
         resp = client.get("/note/Note1.md")
     assert resp.status_code == 200
     assert resp.get_json() == {"content": "Hello"}
 
 def test_create_note(client):
-    with patch("obsidian_api.requests.put", return_value=put_response()) as mock_put:
+    with patch("app.requests.put", return_value=put_response()) as mock_put:
         resp = client.post(
             "/note",
             json={"filename": "New.md", "content": "Hi"},
@@ -90,7 +90,7 @@ def test_create_note(client):
 
 def test_get_note_not_found(client):
     """Return 404 when the note does not exist."""
-    with patch("obsidian_api.requests.get", return_value=DummyResponse(status_code=404)):
+    with patch("app.requests.get", return_value=DummyResponse(status_code=404)):
         resp = client.get("/note/Missing.md")
     assert resp.status_code == 404
     assert resp.get_json() == {"error": "Nota não encontrada"}
@@ -98,7 +98,7 @@ def test_get_note_not_found(client):
 
 def test_create_note_missing_filename(client):
     """Validate error when filename field is absent."""
-    with patch("obsidian_api.requests.put") as mock_put:
+    with patch("app.requests.put") as mock_put:
         resp = client.post("/note", json={"content": "Hi"})
     mock_put.assert_not_called()
     assert resp.status_code == 400
@@ -107,14 +107,14 @@ def test_create_note_missing_filename(client):
 
 def test_search_notes_limit(client):
     with patch(
-        "obsidian_api.requests.request",
+        "app.requests.request",
         return_value=propfind_many_response(35),
     ), patch(
-        "obsidian_api.requests.get",
+        "app.requests.get",
         return_value=note_response("match term"),
     ) as mock_get:
         # Call the view directly with query args to avoid client routing limits
-        from obsidian_api import request as flask_request, search_notes
+        from app import request as flask_request, search_notes
 
         flask_request.args = {"term": "match"}
         resp = search_notes()
@@ -131,7 +131,7 @@ def test_search_notes_limit(client):
 def test_list_notes_malformed_xml(client):
     """Return 500 when the PROPFIND response contains malformed XML."""
     with patch(
-        "obsidian_api.requests.request", return_value=malformed_propfind_response()
+        "app.requests.request", return_value=malformed_propfind_response()
     ):
         resp = client.get("/notes")
     assert resp.status_code == 500
